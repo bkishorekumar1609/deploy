@@ -3,7 +3,7 @@ import pandas as pd
 
 st.set_page_config(page_title="Supermarket Analytics", layout="wide")
 
-st.title("Supermarket Analytics Dashboard")
+st.title("🛒 Supermarket Analytics Dashboard")
 
 file = st.file_uploader("Upload Supermarket Sales Data (CSV)", type=["csv"])
 
@@ -84,4 +84,5 @@ if file is not None:
     # --- Raw Data ---
     with st.expander("📄 View Raw Data"):
         st.dataframe(filtered_df)
+
 
