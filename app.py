@@ -7,12 +7,16 @@ st.title("🛒 Supermarket Analytics App")
 # File uploader
 file = st.file_uploader("Upload your sales data (CSV)", type=["csv"])
 
-# Second project title (below uploader)
-st.header("📊 Automated Sales & Inventory Analysis Project")
-
 if file is not None:
     df = pd.read_csv(file)
     st.success("File uploaded successfully!")
 
     st.subheader("🔍 Data Preview")
     st.write(df.head())
+
+
+# Second project title (below uploader)
+st.header("📊 Automated Sales & Inventory Analysis Project")
+
+# File uploader
+file = st.file_uploader("Upload your sales data (CSV)", type=["csv"])
