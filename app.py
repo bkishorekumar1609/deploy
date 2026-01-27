@@ -19,4 +19,4 @@ if file is not None:
 st.header("📊 Automated Sales & Inventory Analysis Project")
 
 # File uploader
-file = st.file_uploader("Upload your sales data (CSV)", type=["csv"])
+file = st.file_uploader("Upload file you want (CSV)", type=["csv"])
