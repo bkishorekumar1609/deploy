@@ -5,7 +5,7 @@ from scipy import stats
 import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Machine Quality Control App", layout="wide")
-st.title("🔧 Machine Quality Analysis Web App")
+st.title("KA 🔧 Machine Quality Analysis Web App")
 
 # -------------------------------
 # USER INPUT: FIXED MEASUREMENT
