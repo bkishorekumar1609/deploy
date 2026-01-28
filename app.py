@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # Main project title
-st.title("🛒 Supermarket Analytics App")
+st.title("Arvind Analytics App")
 
 # File uploader
 file = st.file_uploader("Upload your sales data (CSV)", type=["csv"])
