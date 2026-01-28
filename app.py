@@ -6,7 +6,7 @@ from scipy import stats
 import matplotlib.pyplot as plt
 
 
-st.set_page_config(page_title="Machine Quality Control App", layout="wide")
+st.set_page_config(page_title="SK Analytics App", layout="wide")
 st.title("KA 🔧 Machine Quality Analysis Web App")
 
 # -------------------------------
