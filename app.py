@@ -7,7 +7,25 @@ import matplotlib.pyplot as plt
 st.set_page_config(page_title="Machine Quality Control App", layout="wide")
 st.title("🔧 Machine Quality Analysis Web App")
 
-# Upload CSV
+# -------------------------------
+# USER INPUT: FIXED MEASUREMENT
+# -------------------------------
+st.subheader("⚙ Enter Quality Specifications")
+
+col1, col2 = st.columns(2)
+with col1:
+    target = st.number_input("Target Measurement (Fixed Value)", min_value=0.0, value=50.0)
+with col2:
+    tolerance = st.number_input("Tolerance (±)", min_value=0.0, value=0.5)
+
+LSL = target - tolerance
+USL = target + tolerance
+
+st.info(f"📌 Specification Limits → LSL: {LSL} | USL: {USL}")
+
+# -------------------------------
+# Upload Dataset
+# -------------------------------
 file = st.file_uploader("📂 Upload Machine Dataset (CSV)", type=["csv"])
 
 if file:
@@ -43,9 +61,9 @@ if file:
         st.success("✅ No significant difference between machines")
 
     # -------------------------------
-    # Control Charts
+    # Control Charts + Spec Limits
     # -------------------------------
-    st.subheader("📉 Control Charts (X̄ Chart)")
+    st.subheader("📉 Control Charts with User-Defined Limits")
 
     results = []
 
@@ -57,57 +75,58 @@ if file:
         UCL = mean + 3 * std
         LCL = mean - 3 * std
 
-        out_of_control = ((values > UCL) | (values < LCL)).sum()
+        spec_violations = ((values < LSL) | (values > USL)).sum()
+        control_violations = ((values < LCL) | (values > UCL)).sum()
 
-        # Store result
         results.append({
             "Machine": m,
             "Mean": round(mean, 3),
             "Std Dev": round(std, 3),
-            "Out of Control Points": out_of_control
+            "Spec Violations": spec_violations,
+            "Control Violations": control_violations
         })
 
-        # Plot
         plt.figure()
-        plt.plot(values.values, marker='o')
-        plt.axhline(mean, linestyle='--', label='Mean')
+        plt.plot(values.values, marker='o', label="Measurement")
+        plt.axhline(mean, linestyle='--', label='Process Mean')
         plt.axhline(UCL, linestyle='--', label='UCL')
         plt.axhline(LCL, linestyle='--', label='LCL')
+        plt.axhline(USL, linestyle=':', label='USL (Spec)')
+        plt.axhline(LSL, linestyle=':', label='LSL (Spec)')
         plt.title(f"Control Chart - Machine {m}")
         plt.legend()
         st.pyplot(plt)
 
     # -------------------------------
-    # Good vs Bad Machine
+    # GOOD vs BAD MACHINE
     # -------------------------------
-    st.subheader("✅ Machine Performance Decision")
+    st.subheader("✅ Machine Quality Decision")
 
     result_df = pd.DataFrame(results)
 
     result_df["Status"] = np.where(
-        (result_df["Out of Control Points"] == 0) & (result_df["Std Dev"] == result_df["Std Dev"].min()),
+        (result_df["Spec Violations"] == 0) & (result_df["Control Violations"] == 0),
         "GOOD",
-        "NEEDS ATTENTION"
+        "BAD"
     )
 
     st.dataframe(result_df)
 
-    best_machine = result_df.sort_values("Std Dev").iloc[0]["Machine"]
-    worst_machine = result_df.sort_values("Std Dev").iloc[-1]["Machine"]
-
-    st.success(f"🏆 Best Machine: {best_machine}")
-    st.error(f"⚠ Worst Machine: {worst_machine}")
+    st.success("✔ Good Machines: " + ", ".join(result_df[result_df["Status"]=="GOOD"]["Machine"]))
+    st.error("❌ Bad Machines: " + ", ".join(result_df[result_df["Status"]=="BAD"]["Machine"]))
 
     # -------------------------------
     # Prediction
     # -------------------------------
-    st.subheader("🔮 Prediction (Next Output Value)")
+    st.subheader("🔮 Prediction (Next Output)")
 
     selected_machine = st.selectbox("Select Machine for Prediction", machines)
 
     mean_val = desc.loc[selected_machine, 'mean']
     std_val = desc.loc[selected_machine, 'std']
 
-    prediction = np.random.normal(mean_val, std_val)
+    predicted = np.random.normal(mean_val, std_val)
+    status = "OK" if LSL <= predicted <= USL else "OUT OF SPEC"
 
-    st.info(f"📌 Predicted next output for Machine {selected_machine}: **{round(prediction, 3)}**")
+    st.info(f"📌 Predicted Value: **{round(predicted, 3)}**")
+    st.write(f"📊 Prediction Status: **{status}**")
