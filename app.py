@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import streamlit as st
-import pandas as pd
-import plotly.express as px
 from scipy import stats
 import matplotlib.pyplot as plt
 
@@ -134,34 +132,3 @@ if file:
 
     st.info(f"📌 Predicted Value: **{round(predicted, 3)}**")
     st.write(f"📊 Prediction Status: **{status}**")
-
-# Page Config
-st.set_page_config(page_title="Supermarket Insights Pro", layout="wide")
-st.title("🛒 Supermarket Analytics Dashboard")
-st.markdown("Upload your sales data to generate instant business intelligence.")
-
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    
-    # 1. Let the user choose the columns (avoids KeyErrors)
-    st.sidebar.subheader("Configure Columns")
-    all_columns = df.columns.tolist()
-    
-    # Auto-select if 'Total' or 'Revenue' exists, otherwise default to the first column
-    sales_col = st.sidebar.selectbox("Select Sales/Revenue Column", all_columns, 
-                                     index=all_columns.index('Total') if 'Total' in all_columns else 0)
-    
-    qty_col = st.sidebar.selectbox("Select Quantity Column", all_columns,
-                                   index=all_columns.index('Quantity') if 'Quantity' in all_columns else 0)
-
-    # 2. Perform calculations using the variables, not strings
-    try:
-        total_sales = df[sales_col].sum()
-        total_items = df[qty_col].sum()
-
-        col1, col2 = st.columns(2)
-        col1.metric("Total Revenue", f"${total_sales:,.2f}")
-        col2.metric("Units Sold", f"{total_items:,}")
-        
-    except Exception as e:
-        st.error(f"Error calculating metrics: {e}. Please ensure selected columns are numeric.")
