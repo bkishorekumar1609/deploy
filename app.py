@@ -132,3 +132,145 @@ if file:
 
     st.info(f"📌 Predicted Value: **{round(predicted, 3)}**")
     st.write(f"📊 Prediction Status: **{status}**")
+
+# -------------------- PAGE CONFIG --------------------
+st.set_page_config(
+    page_title="Supermarket Analytics App",
+    layout="wide"
+)
+
+st.title("🛒 Automated Supermarket Analytics Dashboard")
+st.markdown(
+    """
+    Upload supermarket sales data (CSV or Excel) and get **instant insights**
+    on sales, inventory, customers, and discounts.
+    """
+)
+
+# -------------------- FILE UPLOAD --------------------
+file = st.file_uploader(
+    "📂 Upload Sales Data (CSV / Excel)",
+    type=["csv", "xlsx"]
+)
+
+if file is not None:
+
+    # Read file
+    if file.name.endswith(".csv"):
+        df = pd.read_csv(file)
+    else:
+        df = pd.read_excel(file)
+
+    st.success("✅ File uploaded successfully!")
+
+    # -------------------- DATA PREPARATION --------------------
+    df['Date'] = pd.to_datetime(df['Date'])
+    df['Sales'] = (df['Quantity'] * df['Price']) - df['Discount']
+
+    # -------------------- SIDEBAR FILTERS --------------------
+    st.sidebar.header("🔍 Filters")
+
+    category_filter = st.sidebar.multiselect(
+        "Select Category",
+        options=df['Category'].unique(),
+        default=df['Category'].unique()
+    )
+
+    df = df[df['Category'].isin(category_filter)]
+
+    # -------------------- KPI METRICS --------------------
+    total_sales = df['Sales'].sum()
+    total_orders = df['Bill_ID'].nunique()
+    avg_bill = total_sales / total_orders if total_orders != 0 else 0
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("💰 Total Sales", f"₹ {total_sales:,.0f}")
+    col2.metric("🧾 Total Bills", total_orders)
+    col3.metric("📊 Avg Bill Value", f"₹ {avg_bill:,.0f}")
+
+    # -------------------- DATA PREVIEW --------------------
+    st.subheader("📄 Data Preview")
+    st.dataframe(df.head())
+
+    # -------------------- SALES TRENDS --------------------
+    st.subheader("📈 Sales Trends")
+
+    daily_sales = df.groupby('Date')['Sales'].sum()
+    monthly_sales = df.groupby(df['Date'].dt.to_period('M'))['Sales'].sum()
+
+    col1, col2 = st.columns(2)
+    col1.write("### Daily Sales")
+    col1.line_chart(daily_sales)
+
+    col2.write("### Monthly Sales")
+    col2.bar_chart(monthly_sales)
+
+    # -------------------- PRODUCT PERFORMANCE --------------------
+    st.subheader("📦 Product Performance")
+
+    product_sales = (
+        df.groupby('Product')['Quantity']
+        .sum()
+        .sort_values(ascending=False)
+    )
+
+    col1, col2 = st.columns(2)
+
+    col1.write("### 🔥 Fast-Moving Products")
+    col1.dataframe(product_sales.head(10))
+
+    col2.write("### 🐌 Slow-Moving Products")
+    col2.dataframe(product_sales.tail(10))
+
+    # -------------------- INVENTORY MANAGEMENT --------------------
+    st.subheader("🏪 Inventory Alerts")
+
+    low_stock = df[df['Current_Stock'] < 10][
+        ['Product', 'Current_Stock']
+    ].drop_duplicates()
+
+    if len(low_stock) > 0:
+        st.warning("⚠️ Low Stock Products")
+        st.dataframe(low_stock)
+    else:
+        st.success("✅ No stock-out risk detected")
+
+    # -------------------- CUSTOMER BEHAVIOR --------------------
+    st.subheader("🛍️ Customer Purchase Behavior")
+
+    items_per_bill = df.groupby('Bill_ID')['Product'].count()
+
+    col1, col2 = st.columns(2)
+
+    col1.write("### Items per Bill")
+    col1.bar_chart(items_per_bill.value_counts())
+
+    col2.write("### Top Customers")
+    top_customers = (
+        df.groupby('Customer_ID')['Sales']
+        .sum()
+        .sort_values(ascending=False)
+        .head(10)
+    )
+    col2.dataframe(top_customers)
+
+    # -------------------- DISCOUNT ANALYSIS --------------------
+    st.subheader("💸 Discount Impact Analysis")
+
+    discount_sales = df.groupby('Discount')['Sales'].sum()
+
+    st.bar_chart(discount_sales)
+
+    # -------------------- DOWNLOAD REPORT --------------------
+    st.subheader("📥 Download Processed Data")
+
+    csv = df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="Download CSV",
+        data=csv,
+        file_name="supermarket_analysis_output.csv",
+        mime="text/csv"
+    )
+
+else:
+    st.info("👆 Please upload a CSV or Excel file to start analysis.")
