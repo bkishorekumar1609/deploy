@@ -140,45 +140,28 @@ st.set_page_config(page_title="Supermarket Insights Pro", layout="wide")
 st.title("🛒 Supermarket Analytics Dashboard")
 st.markdown("Upload your sales data to generate instant business intelligence.")
 
-# 1. File Uploader
-uploaded_file = st.sidebar.file_uploader("Upload Sales CSV/Excel", type=['csv', 'xlsx'])
-
 if uploaded_file:
-    # Load Data
-    df = pd.read_csv(uploaded_file) # Use pd.read_excel for xlsx
+    df = pd.read_csv(uploaded_file)
     
-    # Simple KPI Row
-    total_sales = df['Total'].sum()
-    total_items = df['Quantity'].sum()
-    avg_rating = df['Rating'].mean()
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Revenue", f"${total_sales:,.2f}")
-    col2.metric("Units Sold", f"{total_items:,}")
-    col3.metric("Avg Customer Rating", f"{avg_rating:.1f} / 5")
-
-    # 2. Sales Trend Analysis
-    st.subheader("📈 Sales Trends")
-    df['Date'] = pd.to_datetime(df['Date'])
-    daily_sales = df.groupby('Date')['Total'].sum().reset_index()
-    fig_line = px.line(daily_sales, x='Date', y='Total', title="Daily Revenue Growth")
-    st.plotly_chart(fig_line, use_container_width=True)
-
-    # 3. Product Performance (Fast vs. Slow Moving)
-    st.subheader("📦 Inventory Intelligence")
-    prod_col1, prod_col2 = st.columns(2)
+    # 1. Let the user choose the columns (avoids KeyErrors)
+    st.sidebar.subheader("Configure Columns")
+    all_columns = df.columns.tolist()
     
-    product_sales = df.groupby('Product line')['Quantity'].sum().sort_values(ascending=False).reset_index()
+    # Auto-select if 'Total' or 'Revenue' exists, otherwise default to the first column
+    sales_col = st.sidebar.selectbox("Select Sales/Revenue Column", all_columns, 
+                                     index=all_columns.index('Total') if 'Total' in all_columns else 0)
     
-    with prod_col1:
-        fig_fast = px.bar(product_sales.head(5), x='Quantity', y='Product line', orientation='h', 
-                          title="Fast-Moving Products", color_discrete_sequence=['#00CC96'])
-        st.plotly_chart(fig_fast)
+    qty_col = st.sidebar.selectbox("Select Quantity Column", all_columns,
+                                   index=all_columns.index('Quantity') if 'Quantity' in all_columns else 0)
 
-    with prod_col2:
-        fig_slow = px.bar(product_sales.tail(5), x='Quantity', y='Product line', orientation='h', 
-                          title="Slow-Moving Products", color_discrete_sequence=['#EF553B'])
-        st.plotly_chart(fig_slow)
+    # 2. Perform calculations using the variables, not strings
+    try:
+        total_sales = df[sales_col].sum()
+        total_items = df[qty_col].sum()
 
-else:
-    st.info("Please upload a CSV file in the sidebar to begin.")
+        col1, col2 = st.columns(2)
+        col1.metric("Total Revenue", f"${total_sales:,.2f}")
+        col2.metric("Units Sold", f"{total_items:,}")
+        
+    except Exception as e:
+        st.error(f"Error calculating metrics: {e}. Please ensure selected columns are numeric.")
