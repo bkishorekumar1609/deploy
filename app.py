@@ -327,27 +327,38 @@ if file:
     )
 
     # ---------------- Download PDF ----------------
-    if st.button("📄 Download PDF Report"):
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
+def clean_text(text):
+    return text.encode("latin-1", "ignore").decode("latin-1")
 
-        pdf.cell(200, 10, "Supermarket Sales Summary Report", ln=True)
-        pdf.ln(5)
-        pdf.cell(200, 10, f"Total Sales: ₹ {filtered_df['Sales'].sum():,.0f}", ln=True)
-        pdf.cell(200, 10, f"Total Profit: ₹ {filtered_df['Profit'].sum():,.0f}", ln=True)
-        pdf.cell(200, 10, f"Total Quantity: {filtered_df['Quantity'].sum()}", ln=True)
+if st.button("📄 Download PDF Report"):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
 
-        pdf.output("report.pdf")
+    pdf.cell(200, 10, clean_text("Supermarket Sales Summary Report"), ln=True)
+    pdf.ln(5)
 
-        with open("report.pdf", "rb") as f:
-            st.download_button(
-                "📥 Download PDF",
-                data=f,
-                file_name="Supermarket_Report.pdf",
-                mime="application/pdf"
-            )
+    pdf.cell(200, 10, clean_text(
+        f"Total Sales: Rs. {filtered_df['Sales'].sum():,.0f}"
+    ), ln=True)
 
+    pdf.cell(200, 10, clean_text(
+        f"Total Profit: Rs. {filtered_df['Profit'].sum():,.0f}"
+    ), ln=True)
+
+    pdf.cell(200, 10, clean_text(
+        f"Total Quantity Sold: {filtered_df['Quantity'].sum()}"
+    ), ln=True)
+
+    pdf.output("report.pdf")
+
+    with open("report.pdf", "rb") as f:
+        st.download_button(
+            "📥 Download PDF",
+            data=f,
+            file_name="Supermarket_Report.pdf",
+            mime="application/pdf"
+        )
     # ---------------- Data Preview ----------------
     with st.expander("📄 View Data"):
         st.dataframe(filtered_df)
