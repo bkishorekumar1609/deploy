@@ -6,6 +6,7 @@ from scipy import stats
 import matplotlib.pyplot as plt
 import io
 from fpdf import FPDF
+from xlsxwriter import Workbook
 
 
 st.set_page_config(page_title="SK Analytics App", layout="wide")
