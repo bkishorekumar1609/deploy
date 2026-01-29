@@ -137,6 +137,7 @@ if file:
     st.write(f"📊 Prediction Status: **{status}**")
 
 # ---------------- Page Config ----------------
+
 st.set_page_config(page_title="Supermarket Analytics Dashboard", layout="wide")
 st.title("🛒 Supermarket Analytics Dashboard")
 
@@ -145,43 +146,40 @@ file = st.file_uploader("Upload Supermarket Sales Data (CSV)", type=["csv"])
 
 if file:
     df = pd.read_csv(file)
-
-    # ---------------- Preprocessing ----------------
+    
+    # Preprocessing (Safeguards added)
     df['Date'] = pd.to_datetime(df['Date'])
     df['Sales'] = df['Quantity'] * df['Price']
     df['Profit'] = df['Sales'] - (df['Quantity'] * df['Cost'])
-    df['Profit_Margin'] = df['Profit'] / df['Sales']
+    # Prevent division by zero errors
+    df['Profit_Margin'] = np.where(df['Sales'] != 0, df['Profit'] / df['Sales'], 0)
 
     # ---------------- Sidebar Filters ----------------
     st.sidebar.header("🔍 Filters")
 
-    date_range = st.sidebar.date_input(
-        "Select Date Range",
-        [df['Date'].min(), df['Date'].max()]
-    )
+    # Date Range with error handling
+    try:
+        start_date, end_date = st.sidebar.date_input(
+            "Select Date Range",
+            [df['Date'].min(), df['Date'].max()]
+        )
+    except ValueError:
+        st.error("Please select a valid start and end date.")
+        st.stop()
 
     category_filter = st.sidebar.multiselect(
-        "Select Category",
-        df['Category'].unique(),
-        default=df['Category'].unique()
-    )
-
-    product_filter = st.sidebar.multiselect(
-        "Select Product",
-        df['Product'].unique(),
-        default=df['Product'].unique()
+        "Select Category", df['Category'].unique(), default=df['Category'].unique()
     )
 
     filtered_df = df[
-        (df['Date'].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1]))) &
-        (df['Category'].isin(category_filter)) &
-        (df['Product'].isin(product_filter))
+        (df['Date'].between(pd.to_datetime(start_date), pd.to_datetime(end_date))) &
+        (df['Category'].isin(category_filter))
     ]
 
     # ---------------- KPIs ----------------
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("💰 Total Sales", f"₹ {filtered_df['Sales'].sum():,.0f}")
-    col2.metric("📦 Quantity Sold", filtered_df['Quantity'].sum())
+    col2.metric("📦 Quantity Sold", f"{filtered_df['Quantity'].sum():,}")
     col3.metric("🧾 Total Profit", f"₹ {filtered_df['Profit'].sum():,.0f}")
     col4.metric("🛍️ Products", filtered_df['Product'].nunique())
 
@@ -192,176 +190,70 @@ if file:
     daily_sales = filtered_df.groupby('Date')['Sales'].sum()
     st.line_chart(daily_sales)
 
-    st.divider()
-
-    # ---------------- Product Performance ----------------
-    st.subheader("🏆 Product Performance")
-    product_sales = filtered_df.groupby('Product')['Sales'].sum().sort_values(ascending=False)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("Top 5 Products")
+    # ---------------- Product & Category Analysis ----------------
+    col_a, col_b = st.columns(2)
+    
+    with col_a:
+        st.subheader("🏆 Top 5 Products")
+        product_sales = filtered_df.groupby('Product')['Sales'].sum().sort_values(ascending=False)
         st.bar_chart(product_sales.head(5))
-    with col2:
-        st.write("Least 5 Products")
-        st.bar_chart(product_sales.tail(5))
 
-    st.divider()
-
-    # ---------------- Inventory Analysis ----------------
-    st.subheader("📦 Inventory Analysis")
-    inventory = filtered_df.groupby('Product')['Stock'].mean()
-    low_stock = inventory[inventory < 20]
-
-    st.write("⚠️ Low Stock Products")
-    st.dataframe(low_stock)
-    st.bar_chart(inventory)
-
-    st.divider()
-
-    # ---------------- Category Analysis ----------------
-    st.subheader("🗂️ Category Analysis")
-    category_sales = filtered_df.groupby('Category')['Sales'].sum()
-    category_profit = filtered_df.groupby('Category')['Profit'].sum()
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("Sales by Category")
+    with col_b:
+        st.subheader("🗂️ Sales by Category")
+        category_sales = filtered_df.groupby('Category')['Sales'].sum()
         st.bar_chart(category_sales)
-    with col2:
-        st.write("Profit by Category")
-        st.bar_chart(category_profit)
-
-    st.divider()
-
-    # ---------------- Sales Forecast ----------------
-    st.subheader("🔮 Sales Forecast (Next 7 Days)")
-    daily_sales_df = filtered_df.groupby('Date')['Sales'].sum().reset_index()
-    daily_sales_df['MA_7'] = daily_sales_df['Sales'].rolling(7).mean()
-
-    last_ma = daily_sales_df['MA_7'].iloc[-1]
-    future_dates = pd.date_range(
-        start=daily_sales_df['Date'].max() + pd.Timedelta(days=1),
-        periods=7
-    )
-
-    forecast_df = pd.DataFrame({
-        'Date': future_dates,
-        'Forecasted Sales': [last_ma] * 7
-    })
-
-    st.line_chart(daily_sales_df.set_index('Date')[['Sales', 'MA_7']])
-    st.dataframe(forecast_df)
 
     st.divider()
 
     # ---------------- ABC Inventory Analysis ----------------
     st.subheader("📦 ABC Inventory Classification")
-
+    # 
+    
     abc_df = (
         filtered_df.groupby('Product')['Sales']
         .sum()
         .sort_values(ascending=False)
         .reset_index()
     )
-
     abc_df['Cumulative %'] = abc_df['Sales'].cumsum() / abc_df['Sales'].sum() * 100
-
-    def abc_class(x):
-        if x <= 70:
-            return 'A'
-        elif x <= 90:
-            return 'B'
-        else:
-            return 'C'
-
-    abc_df['Class'] = abc_df['Cumulative %'].apply(abc_class)
-    st.dataframe(abc_df)
-
-    st.divider()
+    abc_df['Class'] = abc_df['Cumulative %'].apply(lambda x: 'A' if x <= 70 else ('B' if x <= 90 else 'C'))
+    
+    # Displaying with color highlighting
+    def color_abc(val):
+        color = 'lightgreen' if val == 'A' else 'orange' if val == 'B' else 'pink'
+        return f'background-color: {color}'
+    
+    st.dataframe(abc_df.style.applymap(color_abc, subset=['Class']))
 
     # ---------------- Profit Margin Heatmap ----------------
     st.subheader("🔥 Profit Margin Heatmap")
-
     heatmap_df = filtered_df.pivot_table(
-        values='Profit_Margin',
-        index='Category',
-        columns='Product',
-        aggfunc='mean'
-    )
-
+        values='Profit_Margin', index='Category', columns='Product', aggfunc='mean'
+    ).fillna(0)
     st.dataframe(heatmap_df.style.background_gradient(cmap="RdYlGn"))
 
-    st.divider()
-
-    # ---------------- Automatic Insights ----------------
-    st.subheader("🧠 Automatic Insights")
-
-    st.success(f"""
-    🔹 Top Product: {product_sales.idxmax()}  
-    🔹 Lowest Product: {product_sales.idxmin()}  
-    🔹 Best Category: {category_sales.idxmax()}  
-    🔹 Total Profit: ₹ {filtered_df['Profit'].sum():,.0f}
-    """)
-
-    st.divider()
-
-    # ---------------- Download Excel ----------------
-    st.subheader("⬇️ Download Report")
-
-    report_df = filtered_df.groupby('Category').agg(
-        Total_Sales=('Sales', 'sum'),
-        Total_Profit=('Profit', 'sum'),
-        Quantity_Sold=('Quantity', 'sum')
-    ).reset_index()
-
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        report_df.to_excel(writer, index=False, sheet_name='Summary')
-
-    st.download_button(
-        "📥 Download Excel Report",
-        data=output.getvalue(),
-        file_name="Supermarket_Report.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-
-    # ---------------- Download PDF ----------------
-def clean_text(text):
-    return text.encode("latin-1", "ignore").decode("latin-1")
-
-if st.button("📄 Download PDF Report"):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
-    pdf.cell(200, 10, clean_text("Supermarket Sales Summary Report"), ln=True)
-    pdf.ln(5)
-
-    pdf.cell(200, 10, clean_text(
-        f"Total Sales: Rs. {filtered_df['Sales'].sum():,.0f}"
-    ), ln=True)
-
-    pdf.cell(200, 10, clean_text(
-        f"Total Profit: Rs. {filtered_df['Profit'].sum():,.0f}"
-    ), ln=True)
-
-    pdf.cell(200, 10, clean_text(
-        f"Total Quantity Sold: {filtered_df['Quantity'].sum()}"
-    ), ln=True)
-
-    pdf.output("report.pdf")
-
-    with open("report.pdf", "rb") as f:
+    # ---------------- Download PDF (Improved Logic) ----------------
+    st.subheader("⬇️ Download Reports")
+    
+    if st.button("📄 Generate PDF Report"):
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(200, 10, "Supermarket Sales Summary Report", ln=True, align='C')
+        pdf.ln(10)
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, f"Total Sales: INR {filtered_df['Sales'].sum():,.2f}", ln=True)
+        pdf.cell(200, 10, f"Total Profit: INR {filtered_df['Profit'].sum():,.2f}", ln=True)
+        
+        # Use Output as a string/bytes buffer for Streamlit compatibility
+        pdf_output = pdf.output(dest='S').encode('latin-1')
         st.download_button(
-            "📥 Download PDF",
-            data=f,
+            label="📥 Download PDF",
+            data=pdf_output,
             file_name="Supermarket_Report.pdf",
             mime="application/pdf"
         )
-    # ---------------- Data Preview ----------------
-    with st.expander("📄 View Data"):
-        st.dataframe(filtered_df)
 
 else:
-    st.info("👆 Upload a CSV file to start analysis")
+    st.info("👆 Please upload a CSV file to begin.")
+
