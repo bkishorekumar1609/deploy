@@ -6,3 +6,4 @@ matplotlib
 plotly
 FPDF
 Workbook
+xlsxwriter
