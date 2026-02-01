@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import streamlit as st
 from scipy import stats
 import matplotlib.pyplot as plt
 import io
@@ -10,7 +9,7 @@ from xlsxwriter import Workbook
 
 
 st.set_page_config(page_title="SK Analytics App", layout="wide")
-st.title("KA 🔧 Machine Quality Analysis Web App")
+st.title("🔧 Machine Quality Analysis Web App")
 
 # -------------------------------
 # USER INPUT: FIXED MEASUREMENT
