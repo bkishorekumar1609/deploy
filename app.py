@@ -13,7 +13,7 @@ st.title("🔧 Machine Quality Analysis Web App")
 
 # -------------------------------
 # USER INPUT: FIXED MEASUREMENT
-# -------------------------------
+# ------------------------------
 st.subheader("⚙ Enter Quality Specifications")
 
 col1, col2 = st.columns(2)
